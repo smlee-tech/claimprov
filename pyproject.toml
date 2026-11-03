@@ -1,0 +1,43 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "claimprov"
+version = "0.1.0.dev0"
+description = "Claim-level provenance and epistemic status tracking for multi-agent systems (PROV-O + SHACL)"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10"
+authors = [{ name = "Sumin Lee" }]
+keywords = ["provenance", "prov-o", "shacl", "agents", "llm", "data-governance", "mcp"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+  "pydantic>=2.5",
+  "rdflib>=7.0",
+  "pyshacl>=0.26",
+]
+
+[project.optional-dependencies]
+mcp = ["mcp>=1.0"]
+demo = ["langgraph>=0.2", "langchain-anthropic>=0.2", "pandas>=2.0"]
+dev = ["pytest>=8", "ruff>=0.5"]
+
+[project.urls]
+Homepage = "https://github.com/<your-handle>/claimprov"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/claimprov"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100

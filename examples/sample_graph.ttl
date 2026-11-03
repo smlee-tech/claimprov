@@ -1,0 +1,66 @@
+@prefix cp: <https://w3id.org/claimprov#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<urn:claimprov:retrieval:1> a prov:Activity,
+        cp:Retrieval ;
+    prov:startedAtTime "2026-11-03T02:35:22.774749+00:00"^^xsd:dateTime ;
+    prov:used <urn:claimprov:claim:rec> ;
+    prov:wasAssociatedWith <urn:claimprov:agent:planner> ;
+    cp:enactedStatus cp:ToolVerified ;
+    cp:rationale "cited as verified in plan" ;
+    cp:retrievalQuery "S-17 reorder policy" .
+
+<urn:claimprov:agent:duckdb> a prov:Agent,
+        cp:Tool ;
+    rdfs:label "duckdb-recount" .
+
+<urn:claimprov:agent:planner> a prov:Agent,
+        cp:LLMAgent ;
+    rdfs:label "planning-agent" ;
+    cp:modelName "claude-sonnet-4-5" .
+
+<urn:claimprov:claim:lt> a prov:Entity,
+        cp:Claim ;
+    prov:generatedAtTime "2026-11-03T02:35:22.774176+00:00"^^xsd:dateTime ;
+    prov:wasAttributedTo <urn:claimprov:agent:analyst> ;
+    cp:claimObject "14" ;
+    cp:claimPredicate "avgLeadTimeDays" ;
+    cp:claimSubject "S-17" ;
+    cp:confidence 0.9 ;
+    cp:declaredStatus cp:ToolVerified ;
+    cp:statement "Supplier S-17 average lead time is 14 days" ;
+    cp:supportedBy <urn:claimprov:evidence:orders> ;
+    cp:verifiedBy <urn:claimprov:verification:8800ebba-6055-4313-933b-97c6db8051bc> .
+
+<urn:claimprov:claim:rec> a prov:Entity,
+        cp:Claim ;
+    prov:generatedAtTime "2026-11-03T02:35:22.774663+00:00"^^xsd:dateTime ;
+    prov:wasAttributedTo <urn:claimprov:agent:analyst> ;
+    prov:wasDerivedFrom <urn:claimprov:claim:lt> ;
+    cp:declaredStatus cp:Derived ;
+    cp:statement "Reorder S-17 stock 2 weeks ahead of demand" .
+
+<urn:claimprov:verification:8800ebba-6055-4313-933b-97c6db8051bc> a prov:Activity,
+        cp:Verification ;
+    prov:endedAtTime "2026-11-03T02:35:22.774160+00:00"^^xsd:dateTime ;
+    prov:used <urn:claimprov:evidence:orders> ;
+    prov:wasAssociatedWith <urn:claimprov:agent:duckdb> ;
+    cp:method "sql-recount" ;
+    cp:outcome cp:Passed .
+
+<urn:claimprov:agent:analyst> a prov:Agent,
+        cp:LLMAgent ;
+    rdfs:label "analysis-agent" ;
+    cp:modelName "claude-sonnet-4-5" .
+
+<urn:claimprov:evidence:orders> a prov:Entity,
+        cp:Evidence ;
+    dcterms:license "CC0-1.0" ;
+    prov:generatedAtTime "2026-11-03T02:35:22.773670+00:00"^^xsd:dateTime ;
+    cp:contentHash "sha256:abc" ;
+    cp:evidenceKind cp:Dataset ;
+    cp:sourceLocation "kaggle:dataco/orders.csv"^^xsd:anyURI .
+

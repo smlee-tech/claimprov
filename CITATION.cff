@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use claimprov, please cite it as below."
+title: "claimprov: claim-level provenance and epistemic status for multi-agent systems"
+type: software
+authors:
+  - family-names: Lee
+    given-names: Sumin
+version: 0.1.0-alpha.1
+date-released: 2026-11-02
+license: Apache-2.0
+repository-code: "https://github.com/smlee-tech/claimprov"
+keywords:
+  - provenance
+  - PROV-O
+  - SHACL
+  - AI agents
+  - data governance
+  - epistemic status
