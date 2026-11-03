@@ -29,6 +29,8 @@ It is the companion implementation of a working paper in information systems res
 
 ## Quickstart
 
+Requires Python 3.10+.
+
 ```bash
 pip install -e ".[dev]"
 pytest

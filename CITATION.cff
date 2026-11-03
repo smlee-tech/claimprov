@@ -5,7 +5,7 @@ type: software
 authors:
   - family-names: Lee
     given-names: Sumin
-version: 0.1.0-alpha.1
+version: 0.1.0a1
 date-released: 2026-11-02
 license: Apache-2.0
 repository-code: "https://github.com/smlee-tech/claimprov"
