@@ -1,5 +1,9 @@
 # claimprov
 
+[![PyPI](https://img.shields.io/pypi/v/claimprov?include_prereleases)](https://pypi.org/project/claimprov/)
+[![CI](https://github.com/smlee-tech/claimprov/actions/workflows/ci.yml/badge.svg)](https://github.com/smlee-tech/claimprov/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
 Claim-level provenance and epistemic status for multi-agent systems. A small extension of W3C PROV-O, SHACL shapes that enforce it, and (coming) middleware and an MCP server that apply it between agents.
 
 **Status: pre-release.** The data model, ontology and shapes are in and tested. Storage/retrieval middleware, the worked configurations, and the MCP server are in progress. APIs will change before v0.1.0.
@@ -32,8 +36,9 @@ It is the companion implementation of a working paper in information systems res
 Requires Python 3.10+.
 
 ```bash
-pip install -e ".[dev]"
-pytest
+pip install --pre claimprov        # pre-release from PyPI
+# or, for development:
+pip install -e ".[dev]" && pytest
 ```
 
 ```python
