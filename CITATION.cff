@@ -5,9 +5,11 @@ type: software
 authors:
   - family-names: Lee
     given-names: Sumin
+    orcid: "https://orcid.org/0000-0003-2138-1896"
 version: 0.1.0a1
-date-released: 2026-11-02
+date-released: 2026-11-03
 license: Apache-2.0
+doi: 10.5281/zenodo.23907282
 repository-code: "https://github.com/smlee-tech/claimprov"
 keywords:
   - provenance

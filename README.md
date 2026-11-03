@@ -2,6 +2,7 @@
 
 [![PyPI](https://img.shields.io/pypi/v/claimprov?include_prereleases)](https://pypi.org/project/claimprov/)
 [![CI](https://github.com/smlee-tech/claimprov/actions/workflows/ci.yml/badge.svg)](https://github.com/smlee-tech/claimprov/actions/workflows/ci.yml)
+[![DOI](https://zenodo.org/badge/1443765451.svg)](https://doi.org/10.5281/zenodo.23907282)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
 Claim-level provenance and epistemic status for multi-agent systems. A small extension of W3C PROV-O, SHACL shapes that enforce it, and (coming) middleware and an MCP server that apply it between agents.
@@ -89,7 +90,7 @@ This is a reference implementation of a theoretical distinction, not a detection
 
 ## Citing
 
-See [CITATION.cff](CITATION.cff). A citation for the companion paper will be added when a public version exists.
+See [CITATION.cff](CITATION.cff). Archived on Zenodo: concept DOI [10.5281/zenodo.23907282](https://doi.org/10.5281/zenodo.23907282) (all versions). A citation for the companion paper will be added when a public version exists.
 
 ## License
 
