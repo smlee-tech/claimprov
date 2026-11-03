@@ -31,7 +31,7 @@ demo = ["langgraph>=0.2", "langchain-anthropic>=0.2", "pandas>=2.0"]
 dev = ["pytest>=8", "ruff>=0.5"]
 
 [project.urls]
-Homepage = "https://github.com/<your-handle>/claimprov"
+Homepage = "https://github.com/smlee-tech/claimprov"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/claimprov"]

@@ -1,6 +1,6 @@
 # Concepts
 
-This document explains what claimprov is for, the distinction it instantiates,
+This document explains what __claimprov__ is for, the distinction it instantiates,
 the design decisions that distinction forces, and the boundaries of what the
 code claims. It is the place to read before using the library or contributing
 to it.
