@@ -1,0 +1,222 @@
+@prefix cp:      <https://w3id.org/claimprov#> .
+@prefix prov:    <http://www.w3.org/ns/prov#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+###############################################################################
+# claimprov ontology — a small PROV-O extension for claim-level provenance
+# and epistemic status in multi-agent systems.
+#
+# Why an extension and not plain PROV-O:
+#   PROV-O says *where* an entity came from. It does not say what epistemic
+#   standing the producer *declared* for it, what that standing *requires*,
+#   or how a consumer later *enacted* it. Those three things are what the
+#   declared/enacted gap is made of, so they get first-class terms.
+###############################################################################
+
+<https://w3id.org/claimprov>
+    a owl:Ontology ;
+    rdfs:label "claimprov ontology"@en ;
+    rdfs:comment "Claim-level provenance and declared/enacted epistemic status for AI agents. Extends W3C PROV-O."@en ;
+    owl:imports <http://www.w3.org/ns/prov-o#> ;
+    owl:versionInfo "0.1.0" ;
+    dcterms:license <https://www.apache.org/licenses/LICENSE-2.0> .
+
+#------------------------------------------------------------------------------
+# Classes
+#------------------------------------------------------------------------------
+
+cp:Claim a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Claim"@en ;
+    rdfs:comment "One proposition an agent put into circulation, governed as a unit. The unit of reasoning for agents, as opposed to the asset (table, document) that is the usual unit of certification."@en .
+
+cp:Evidence a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Evidence"@en ;
+    rdfs:comment "Material a claim or a verification points at: a dataset slice, a document, a tool output, an observation, a review record."@en .
+
+cp:Verification a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "Verification"@en ;
+    rdfs:comment "An activity that checks a claim against evidence. Only a Verification associated with a Tool or a Person can raise a claim's declared status; an LLM agent re-reading a claim is not a Verification."@en .
+
+cp:Retrieval a owl:Class ;
+    rdfs:subClassOf prov:Activity ;
+    rdfs:label "Retrieval"@en ;
+    rdfs:comment "A consumer agent fetched a claim and treated it under some enacted status. This is where declared and enacted status are compared."@en .
+
+cp:LLMAgent a owl:Class ;
+    rdfs:subClassOf prov:SoftwareAgent ;
+    rdfs:label "LLM agent"@en ;
+    rdfs:comment "A software agent whose outputs are produced by a language model."@en .
+
+cp:Tool a owl:Class ;
+    rdfs:subClassOf prov:SoftwareAgent ;
+    rdfs:label "Tool"@en ;
+    rdfs:comment "A deterministic software agent (query engine, validator, calculator) whose output is reproducible given the same inputs."@en .
+
+cp:LLMAgent owl:disjointWith cp:Tool .
+
+# Status is modelled as a closed set of individuals, not a datatype, so that
+# rank can be attached and SHACL/SPARQL can compare statuses through the graph.
+cp:EpistemicStatus a owl:Class ;
+    rdfs:label "Epistemic status"@en ;
+    rdfs:comment "Closed set: Asserted, Derived, ToolVerified, HumanVerified."@en ;
+    owl:equivalentClass [ a owl:Class ; owl:oneOf ( cp:Asserted cp:Derived cp:ToolVerified cp:HumanVerified ) ] .
+
+cp:VerificationOutcome a owl:Class ;
+    owl:equivalentClass [ a owl:Class ; owl:oneOf ( cp:Passed cp:Failed cp:Inconclusive ) ] .
+
+cp:EvidenceKind a owl:Class ;
+    owl:equivalentClass [ a owl:Class ; owl:oneOf ( cp:Dataset cp:Document cp:ToolOutput cp:Observation cp:HumanReview ) ] .
+
+#------------------------------------------------------------------------------
+# Status individuals, with trust rank
+#
+#   Asserted = Derived = 0  <  ToolVerified = 1  <  HumanVerified = 2
+#
+# Derived shares rank 0 with Asserted on purpose: derivation adds lineage,
+# not verification. Inference over verified inputs does not produce a
+# verified output.
+#------------------------------------------------------------------------------
+
+cp:Asserted a cp:EpistemicStatus ;
+    rdfs:label "asserted"@en ;
+    cp:trustRank 0 ;
+    rdfs:comment "Produced by an agent; no verification attached; lineage not required."@en .
+
+cp:Derived a cp:EpistemicStatus ;
+    rdfs:label "derived"@en ;
+    cp:trustRank 0 ;
+    rdfs:comment "Computed or inferred from other claims; must carry prov:wasDerivedFrom."@en .
+
+cp:ToolVerified a cp:EpistemicStatus ;
+    rdfs:label "tool-verified"@en ;
+    cp:trustRank 1 ;
+    rdfs:comment "Checked by a cp:Tool in a passed cp:Verification that cites evidence."@en .
+
+cp:HumanVerified a cp:EpistemicStatus ;
+    rdfs:label "human-verified"@en ;
+    cp:trustRank 2 ;
+    rdfs:comment "Checked by a prov:Person in a passed cp:Verification that cites evidence."@en .
+
+cp:Passed a cp:VerificationOutcome ; rdfs:label "passed"@en .
+cp:Failed a cp:VerificationOutcome ; rdfs:label "failed"@en .
+cp:Inconclusive a cp:VerificationOutcome ; rdfs:label "inconclusive"@en .
+
+cp:Dataset     a cp:EvidenceKind ; rdfs:label "dataset"@en .
+cp:Document    a cp:EvidenceKind ; rdfs:label "document"@en .
+cp:ToolOutput  a cp:EvidenceKind ; rdfs:label "tool output"@en .
+cp:Observation a cp:EvidenceKind ; rdfs:label "observation"@en .
+cp:HumanReview a cp:EvidenceKind ; rdfs:label "human review"@en .
+
+#------------------------------------------------------------------------------
+# Object properties
+#------------------------------------------------------------------------------
+
+cp:declaredStatus a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:domain cp:Claim ;
+    rdfs:range cp:EpistemicStatus ;
+    rdfs:label "declared status"@en ;
+    rdfs:comment "The epistemic status the producer attached to the claim at storage time."@en .
+
+cp:enactedStatus a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:domain cp:Retrieval ;
+    rdfs:range cp:EpistemicStatus ;
+    rdfs:label "enacted status"@en ;
+    rdfs:comment "The epistemic status a consumer treated the claim as having when it used it."@en .
+
+cp:verifiedBy a owl:ObjectProperty ;
+    rdfs:subPropertyOf prov:wasInfluencedBy ;
+    rdfs:domain cp:Claim ;
+    rdfs:range cp:Verification ;
+    rdfs:label "verified by"@en ;
+    rdfs:comment "Links a claim to a verification activity performed on it."@en .
+
+cp:supportedBy a owl:ObjectProperty ;
+    rdfs:subPropertyOf prov:wasDerivedFrom ;
+    rdfs:domain cp:Claim ;
+    rdfs:range cp:Evidence ;
+    rdfs:label "supported by"@en ;
+    rdfs:comment "Evidence the producer cited for the claim."@en .
+
+cp:outcome a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:domain cp:Verification ;
+    rdfs:range cp:VerificationOutcome .
+
+cp:evidenceKind a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:domain cp:Evidence ;
+    rdfs:range cp:EvidenceKind .
+
+# Reused from PROV-O (no redefinition):
+#   prov:wasAttributedTo   Claim      -> Agent            (who asserted it)
+#   prov:wasGeneratedBy    Claim      -> Activity         (the producing run)
+#   prov:wasDerivedFrom    Claim      -> Claim            (claim lineage)
+#   prov:wasAssociatedWith Verification/Retrieval -> Agent
+#   prov:used              Verification -> Evidence ; Retrieval -> Claim
+#   prov:generatedAtTime, prov:startedAtTime, prov:endedAtTime
+
+#------------------------------------------------------------------------------
+# Datatype properties
+#------------------------------------------------------------------------------
+
+cp:trustRank a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain cp:EpistemicStatus ;
+    rdfs:range xsd:integer ;
+    rdfs:comment "Total order on statuses used by the laundering and divergence rules."@en .
+
+cp:statement a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain cp:Claim ;
+    rdfs:range xsd:string ;
+    rdfs:comment "The proposition in natural language."@en .
+
+cp:claimSubject   a owl:DatatypeProperty ; rdfs:domain cp:Claim ; rdfs:range xsd:string .
+cp:claimPredicate a owl:DatatypeProperty ; rdfs:domain cp:Claim ; rdfs:range xsd:string .
+cp:claimObject    a owl:DatatypeProperty ; rdfs:domain cp:Claim ; rdfs:range xsd:string .
+
+cp:confidence a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain cp:Claim ;
+    rdfs:range xsd:decimal ;
+    rdfs:comment "Producer's self-reported confidence in [0,1]. Orthogonal to status: confidence is what the producer believes, status is what has been done to the claim."@en .
+
+cp:validFrom a owl:DatatypeProperty ; rdfs:domain cp:Claim ; rdfs:range xsd:dateTime .
+cp:validTo   a owl:DatatypeProperty ; rdfs:domain cp:Claim ; rdfs:range xsd:dateTime .
+
+cp:method a owl:DatatypeProperty ;
+    rdfs:domain cp:Verification ;
+    rdfs:range xsd:string ;
+    rdfs:comment "How the verification was done, e.g. 'sql-recount', 'schema-check', 'analyst-review'."@en .
+
+cp:note a owl:DatatypeProperty ; rdfs:range xsd:string .
+
+cp:sourceLocation a owl:DatatypeProperty ;
+    rdfs:domain cp:Evidence ;
+    rdfs:range xsd:anyURI ;
+    rdfs:comment "URI, path, or dataset identifier of the evidence."@en .
+
+cp:contentHash a owl:DatatypeProperty ;
+    rdfs:domain cp:Evidence ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Hash of the bytes actually used, e.g. 'sha256:...'."@en .
+
+cp:excerpt a owl:DatatypeProperty ; rdfs:domain cp:Evidence ; rdfs:range xsd:string .
+
+cp:modelName a owl:DatatypeProperty ;
+    rdfs:domain cp:LLMAgent ;
+    rdfs:range xsd:string .
+
+cp:agentVersion a owl:DatatypeProperty ; rdfs:domain prov:Agent ; rdfs:range xsd:string .
+
+cp:retrievalQuery a owl:DatatypeProperty ;
+    rdfs:domain cp:Retrieval ;
+    rdfs:range xsd:string ;
+    rdfs:comment "The query or context under which the consumer retrieved the claim."@en .
+
+cp:rationale a owl:DatatypeProperty ;
+    rdfs:domain cp:Retrieval ;
+    rdfs:range xsd:string ;
+    rdfs:comment "Why the consumer enacted the status it did."@en .
