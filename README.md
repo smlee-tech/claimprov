@@ -18,7 +18,9 @@ claimprov is built around that observation. It distinguishes a claim's **declare
 It is the companion implementation of a working paper in information systems research. The paper supplies the theory; this library is the part that can be run. [docs/concepts.md](docs/concepts.md) has the full argument, the design decisions it forces, and what the code does and does not claim.
 
 ## What it does
+![A tool-verified claim, a claim derived from it, and a retrieval that enacts a higher status than was declared](examples/sample_graph.svg)
 
+*Everything stored conforms; the retrieval on the left (red) enacts `tool-verified` for a claim that declares `derived`. That gap is what claimprov measures.*
 - **Claims as the unit of governance.** Every proposition an agent puts into circulation is a `cp:Claim` with its own status, attribution, lineage, evidence and verifications: a representation at the grain at which agents actually reason, alongside asset-level governance (certified tables, semantic views).
 - **A status lattice with teeth.** `asserted` = `derived` (rank 0) < `tool-verified` (1) < `human-verified` (2). Derivation adds lineage, not warrant; only a deterministic tool or a person can raise a claim's rank. SHACL shapes enforce the minimum evidence each status requires and reject *status laundering*: a claim declaring a higher rank than its sources without a verification of its own.
 - **Retrieval as a provenance event.** `cp:Retrieval` records which agent took which claim and what status it *enacted*. Enacting a higher status than was declared produces a SHACL *warning*, not a violation. That warning is the declared/enacted gap, measured.
