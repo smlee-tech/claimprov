@@ -14,32 +14,44 @@ requires, and retrieval events record the status a consumer enacted.
 """
 
 from .model import (
+    DEFAULT_POLICY,
+    TOOL_FIRST_POLICY,
+    AcceptancePolicy,
     AgentKind,
     AgentRef,
+    Asset,
     Claim,
     DeclaredStatus,
     EpistemicStatus,
     Evidence,
     EvidenceKind,
+    RecordKind,
     RetrievalEvent,
+    StatusPolicy,
     Verification,
     VerificationOutcome,
 )
 from .rdf import ClaimGraph, validate
 
 __all__ = [
+    "DEFAULT_POLICY",
+    "TOOL_FIRST_POLICY",
+    "AcceptancePolicy",
     "AgentKind",
     "AgentRef",
+    "Asset",
     "Claim",
     "ClaimGraph",
     "DeclaredStatus",
     "EpistemicStatus",
     "Evidence",
     "EvidenceKind",
+    "RecordKind",
     "RetrievalEvent",
+    "StatusPolicy",
     "Verification",
     "VerificationOutcome",
     "validate",
 ]
 
-__version__ = "0.1.0a1"
+__version__ = "0.1.0a2"

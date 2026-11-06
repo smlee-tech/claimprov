@@ -22,7 +22,7 @@
     rdfs:label "claimprov ontology"@en ;
     rdfs:comment "Claim-level provenance and declared/enacted epistemic status for AI agents. Extends W3C PROV-O."@en ;
     owl:imports <http://www.w3.org/ns/prov-o#> ;
-    owl:versionInfo "0.1.0" ;
+    owl:versionInfo "0.1.0a2" ;
     dcterms:license <https://www.apache.org/licenses/LICENSE-2.0> .
 
 #------------------------------------------------------------------------------
@@ -48,6 +48,21 @@ cp:Retrieval a owl:Class ;
     rdfs:subClassOf prov:Activity ;
     rdfs:label "Retrieval"@en ;
     rdfs:comment "A consumer agent fetched a claim and treated it under some enacted status. This is where declared and enacted status are compared."@en .
+
+cp:Asset a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "Asset"@en ;
+    rdfs:comment "A governed container a claim is written into: a table, a semantic view, a field. Certification attaches here. Its cp:defaultStatus is what a reader obtains for anything read from it that carries no status of its own."@en .
+
+cp:AcceptancePolicy a owl:Class ;
+    rdfs:subClassOf prov:Plan ;
+    rdfs:label "Acceptance policy"@en ;
+    rdfs:comment "What a consumer requires of an input before producing a given kind of record. A Retrieval prov:hadPlan its policy."@en .
+
+cp:RecordKind a owl:Class ;
+    rdfs:label "Record kind"@en ;
+    rdfs:comment "Closed set: Prediction (needs factual warrant), Decision (needs procedural legitimacy), EventRecord (true iff the event happened)."@en ;
+    owl:equivalentClass [ a owl:Class ; owl:oneOf ( cp:Prediction cp:Decision cp:EventRecord ) ] .
 
 cp:LLMAgent a owl:Class ;
     rdfs:subClassOf prov:SoftwareAgent ;
@@ -82,6 +97,11 @@ cp:EvidenceKind a owl:Class ;
 # Derived shares rank 0 with Asserted on purpose: derivation adds lineage,
 # not verification. Inference over verified inputs does not produce a
 # verified output.
+#
+# The ranks are a deployment policy, not a universal epistemic ordering. The
+# default places human verification above tool verification; a deployment in
+# which a reproducible tool check is the stronger warrant may invert the two.
+# The library's StatusPolicy carries the ranking; this file states the default.
 #------------------------------------------------------------------------------
 
 cp:Asserted a cp:EpistemicStatus ;
@@ -103,6 +123,13 @@ cp:HumanVerified a cp:EpistemicStatus ;
     rdfs:label "human-verified"@en ;
     cp:trustRank 2 ;
     rdfs:comment "Checked by a prov:Person in a passed cp:Verification that cites evidence."@en .
+
+cp:Prediction  a cp:RecordKind ; rdfs:label "prediction"@en ;
+    rdfs:comment "An inference about the world. Justified by factual warrant: evidence and verification."@en .
+cp:Decision    a cp:RecordKind ; rdfs:label "decision"@en ;
+    rdfs:comment "A commitment to act. Justified by procedural legitimacy: the policy permitted it on the evidence it had."@en .
+cp:EventRecord a cp:RecordKind ; rdfs:label "event record"@en ;
+    rdfs:comment "A record that something happened. True iff it happened; not falsified by correcting the inference that triggered it."@en .
 
 cp:Passed a cp:VerificationOutcome ; rdfs:label "passed"@en .
 cp:Failed a cp:VerificationOutcome ; rdfs:label "failed"@en .
@@ -128,7 +155,41 @@ cp:enactedStatus a owl:ObjectProperty, owl:FunctionalProperty ;
     rdfs:domain cp:Retrieval ;
     rdfs:range cp:EpistemicStatus ;
     rdfs:label "enacted status"@en ;
-    rdfs:comment "The epistemic status a consumer treated the claim as having when it used it."@en .
+    rdfs:comment "The epistemic status a consumer's use presupposed. Derived from cp:requiredStatus, never annotated directly."@en .
+
+cp:requiredStatus a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:domain cp:Retrieval ;
+    rdfs:range cp:EpistemicStatus ;
+    rdfs:label "required status"@en ;
+    rdfs:comment "The minimum status the consumer's acceptance policy demanded of the claim for the observed use. Enacted status is derived from it: the standing the use presupposed."@en .
+
+cp:observedUse a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:domain cp:Retrieval ;
+    rdfs:range cp:RecordKind ;
+    rdfs:label "observed use"@en ;
+    rdfs:comment "The kind of record the consumer produced from the claim. Observable behavior, not an annotation."@en .
+
+cp:recordKind a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:domain cp:Claim ;
+    rdfs:range cp:RecordKind .
+
+cp:storedIn a owl:ObjectProperty ;
+    rdfs:subPropertyOf prov:wasDerivedFrom ;
+    rdfs:domain cp:Claim ;
+    rdfs:range cp:Asset ;
+    rdfs:label "stored in"@en ;
+    rdfs:comment "The asset the claim was written into."@en .
+
+cp:defaultStatus a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:domain cp:Asset ;
+    rdfs:range cp:EpistemicStatus ;
+    rdfs:comment "Standing conferred by the asset's certification on anything read from it without a status of its own."@en .
+
+cp:requires a owl:ObjectProperty ;
+    rdfs:domain cp:AcceptancePolicy ;
+    rdfs:comment "A (record kind, minimum status) requirement of the policy; see cp:forRecordKind and cp:minimumStatus."@en .
+cp:forRecordKind a owl:ObjectProperty ; rdfs:range cp:RecordKind .
+cp:minimumStatus a owl:ObjectProperty ; rdfs:range cp:EpistemicStatus .
 
 cp:verifiedBy a owl:ObjectProperty ;
     rdfs:subPropertyOf prov:wasInfluencedBy ;
@@ -158,6 +219,8 @@ cp:evidenceKind a owl:ObjectProperty, owl:FunctionalProperty ;
 #   prov:wasDerivedFrom    Claim      -> Claim            (claim lineage)
 #   prov:wasAssociatedWith Verification/Retrieval -> Agent
 #   prov:used              Verification -> Evidence ; Retrieval -> Claim
+#   prov:hadPlan           Retrieval -> AcceptancePolicy
+#   prov:generated         Retrieval -> Claim (the record the consumer produced)
 #   prov:generatedAtTime, prov:startedAtTime, prov:endedAtTime
 
 #------------------------------------------------------------------------------
@@ -215,6 +278,16 @@ cp:retrievalQuery a owl:DatatypeProperty ;
     rdfs:domain cp:Retrieval ;
     rdfs:range xsd:string ;
     rdfs:comment "The query or context under which the consumer retrieved the claim."@en .
+
+cp:reviewed a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain cp:Retrieval ;
+    rdfs:range xsd:boolean ;
+    rdfs:comment "Whether the use passed through evaluative mediation (a person or a validation rule) before proceeding."@en .
+
+cp:readsStatus a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:domain cp:AcceptancePolicy ;
+    rdfs:range xsd:boolean ;
+    rdfs:comment "Whether the retrieval interface exposes declared status to this policy. A policy that cannot see the status cannot enforce its requirements."@en .
 
 cp:rationale a owl:DatatypeProperty ;
     rdfs:domain cp:Retrieval ;

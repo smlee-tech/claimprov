@@ -3,7 +3,7 @@
 from rdflib import RDF, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import PROV
 
-from claimprov import Claim, ClaimGraph, EpistemicStatus, RetrievalEvent, validate
+from claimprov import Asset, Claim, ClaimGraph, EpistemicStatus, RecordKind, RetrievalEvent, validate
 from conftest import passed_by
 
 CP = Namespace("https://w3id.org/claimprov#")
@@ -137,8 +137,8 @@ def test_status_inflation_at_retrieval_is_warning(analyst, planner):
     g = ClaimGraph()
     g.add_claim(_asserted(analyst))
     g.add_retrieval(RetrievalEvent(claim_id="urn:claimprov:claim:a", retrieved_by=planner,
-                                   enacted_status=EpistemicStatus.HUMAN_VERIFIED,
-                                   query="lead time S-17", rationale="treated summary as ground truth"))
+                                   observed_use=RecordKind.EVENT, required_status=EpistemicStatus.HUMAN_VERIFIED,
+                                   query="lead time S-17", rationale="recorded as confirmed"))
     rep = g.validate()
     assert rep.conforms  # warnings do not break conformance
     assert len(rep.warnings) == 1
@@ -150,6 +150,54 @@ def test_faithful_retrieval_has_no_warning(analyst, planner):
     g = ClaimGraph()
     g.add_claim(_asserted(analyst))
     g.add_retrieval(RetrievalEvent(claim_id="urn:claimprov:claim:a", retrieved_by=planner,
-                                   enacted_status=EpistemicStatus.ASSERTED))
+                                   observed_use=RecordKind.DECISION, required_status=EpistemicStatus.ASSERTED))
     rep = g.validate()
     assert rep.conforms and not rep.findings
+
+
+def test_reviewed_gap_is_info_not_warning(analyst, planner):
+    g = ClaimGraph()
+    g.add_claim(_asserted(analyst))
+    g.add_retrieval(RetrievalEvent(claim_id="urn:claimprov:claim:a", retrieved_by=planner,
+                                   observed_use=RecordKind.EVENT, required_status=EpistemicStatus.HUMAN_VERIFIED,
+                                   reviewed=True))
+    rep = g.validate()
+    assert rep.conforms and not rep.warnings
+    assert any(f.severity == "Info" and "closed by review" in f.message for f in rep.findings)
+
+
+def test_enacted_must_equal_required(analyst, planner):
+    """Hand-built graph where someone annotated enacted directly: rejected."""
+    g = ClaimGraph()
+    g.add_claim(_asserted(analyst))
+    r = URIRef("urn:r1")
+    g.g.add((r, RDF.type, CP.Retrieval)); g.g.add((r, RDF.type, PROV.Activity))
+    g.g.add((r, PROV.used, URIRef("urn:claimprov:claim:a")))
+    g.g.add((r, PROV.wasAssociatedWith, g.add_agent(planner)))
+    g.g.add((r, CP.observedUse, CP.Decision))
+    g.g.add((r, CP.requiredStatus, CP.Asserted))
+    g.g.add((r, CP.enactedStatus, CP.HumanVerified))
+    rep = g.validate()
+    assert any("derived, not annotated" in f.message for f in rep.violations)
+
+
+def test_asset_inheritance_warning(analyst):
+    g = ClaimGraph()
+    crm = Asset(id="urn:claimprov:asset:crm", name="CRM.accounts (certified)",
+                default_status=EpistemicStatus.HUMAN_VERIFIED)
+    g.add_asset(crm)
+    g.add_claim(Claim(id="urn:claimprov:claim:churn", statement="Account A churn risk high",
+                      declared_status=EpistemicStatus.ASSERTED, asserted_by=analyst, stored_in=crm.id))
+    rep = g.validate()
+    assert rep.conforms
+    assert any("Asset inheritance" in f.message and "rank 2" in f.message for f in rep.warnings)
+
+
+def test_asset_no_warning_when_claim_matches(analyst, reviewer, dataset_evidence):
+    g = ClaimGraph()
+    crm = Asset(id="urn:claimprov:asset:crm", name="CRM", default_status=EpistemicStatus.HUMAN_VERIFIED)
+    g.add_asset(crm)
+    g.add_claim(Claim(statement="x", declared_status=EpistemicStatus.HUMAN_VERIFIED, asserted_by=analyst,
+                      stored_in=crm.id, verifications=[passed_by(reviewer, dataset_evidence)]))
+    rep = g.validate()
+    assert rep.conforms and not rep.warnings

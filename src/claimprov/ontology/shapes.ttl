@@ -184,22 +184,91 @@ cps:RetrievalShape a sh:NodeShape ;
     sh:targetClass cp:Retrieval ;
     sh:property [ sh:path prov:used ; sh:class cp:Claim ; sh:minCount 1 ] ;
     sh:property [ sh:path prov:wasAssociatedWith ; sh:class prov:Agent ; sh:minCount 1 ] ;
-    sh:property [ sh:path cp:enactedStatus ; sh:in ( cp:Asserted cp:Derived cp:ToolVerified cp:HumanVerified ) ; sh:minCount 1 ; sh:maxCount 1 ] .
+    sh:property [ sh:path cp:enactedStatus ; sh:in ( cp:Asserted cp:Derived cp:ToolVerified cp:HumanVerified ) ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path cp:requiredStatus ; sh:in ( cp:Asserted cp:Derived cp:ToolVerified cp:HumanVerified ) ; sh:minCount 1 ; sh:maxCount 1 ;
+                  sh:message "A retrieval must record the status its acceptance policy required." ] ;
+    sh:property [ sh:path cp:observedUse ; sh:in ( cp:Prediction cp:Decision cp:EventRecord ) ; sh:minCount 1 ; sh:maxCount 1 ;
+                  sh:message "A retrieval must record the kind of record the consumer produced." ] ;
+    sh:property [ sh:path cp:reviewed ; sh:datatype xsd:boolean ; sh:maxCount 1 ] ;
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "Enacted status must equal required status; it is derived, not annotated." ;
+        sh:prefixes <https://w3id.org/claimprov/shapes> ;
+        sh:select """
+            SELECT $this WHERE {
+                $this cp:enactedStatus ?e ; cp:requiredStatus ?r .
+                FILTER (?e != ?r)
+            }
+        """ ;
+    ] .
 
+cps:AssetShape a sh:NodeShape ;
+    sh:targetClass cp:Asset ;
+    sh:property [ sh:path cp:defaultStatus ; sh:in ( cp:Asserted cp:Derived cp:ToolVerified cp:HumanVerified ) ; sh:minCount 1 ; sh:maxCount 1 ;
+                  sh:message "An asset must declare the default status its certification confers." ] .
+
+# Inflation: the use required more warrant than the claim declared, and nothing
+# reviewed it on the way. A provisional input used for a purpose the policy
+# permits on provisional evidence is NOT inflation.
 cps:StatusInflationShape a sh:NodeShape ;
     sh:targetClass cp:Retrieval ;
     sh:severity sh:Warning ;
     sh:sparql [
         a sh:SPARQLConstraint ;
-        sh:message "Status inflation at retrieval: {$this} enacted rank {?enacted} for {?claim}, which declares rank {?declared}." ;
+        sh:message "Status inflation at retrieval: {$this} produced a {?use} that required rank {?required} from {?claim}, which declares rank {?declared}; no review." ;
         sh:prefixes <https://w3id.org/claimprov/shapes> ;
         sh:select """
-            SELECT $this ?claim ?enacted ?declared WHERE {
+            SELECT $this ?claim ?use ?required ?declared WHERE {
                 $this prov:used ?claim .
                 ?claim a cp:Claim .
-                $this  cp:enactedStatus/cp:trustRank  ?enacted .
+                $this  cp:observedUse ?use .
+                $this  cp:requiredStatus/cp:trustRank ?required .
                 ?claim cp:declaredStatus/cp:trustRank ?declared .
-                FILTER (?enacted > ?declared)
+                FILTER (?required > ?declared)
+                FILTER NOT EXISTS { $this cp:reviewed true }
+            }
+        """ ;
+    ] .
+
+# Reviewed inflation: same gap, but evaluative mediation happened. Reported at
+# Info so the gap stays visible without being counted as a divergence.
+cps:ReviewedGapShape a sh:NodeShape ;
+    sh:targetClass cp:Retrieval ;
+    sh:severity sh:Info ;
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "Gap closed by review: {$this} required rank {?required} from {?claim} (declared rank {?declared}); use was reviewed." ;
+        sh:prefixes <https://w3id.org/claimprov/shapes> ;
+        sh:select """
+            SELECT $this ?claim ?required ?declared WHERE {
+                $this prov:used ?claim .
+                ?claim a cp:Claim .
+                $this  cp:requiredStatus/cp:trustRank ?required .
+                ?claim cp:declaredStatus/cp:trustRank ?declared .
+                $this  cp:reviewed true .
+                FILTER (?required > ?declared)
+            }
+        """ ;
+    ] .
+
+# Asset inheritance (the record path): a claim stored in an asset whose default
+# status outranks the claim's declared status is read, by anything that reads
+# the asset rather than the claim, at the asset's standing. Warning, because the
+# stored data is well-formed; the gap is in what the container confers.
+cps:AssetInheritanceShape a sh:NodeShape ;
+    sh:targetClass cp:Claim ;
+    sh:severity sh:Warning ;
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "Asset inheritance: {$this} declares rank {?declared} but is stored in {?asset}, certified at rank {?assetRank}; a reader of the asset obtains the higher standing." ;
+        sh:prefixes <https://w3id.org/claimprov/shapes> ;
+        sh:select """
+            SELECT $this ?asset ?declared ?assetRank WHERE {
+                $this cp:storedIn ?asset .
+                ?asset a cp:Asset .
+                $this  cp:declaredStatus/cp:trustRank ?declared .
+                ?asset cp:defaultStatus/cp:trustRank  ?assetRank .
+                FILTER (?assetRank > ?declared)
             }
         """ ;
     ] .

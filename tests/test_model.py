@@ -1,7 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
-from claimprov import AgentKind, AgentRef, Claim, EpistemicStatus, RetrievalEvent, Verification, VerificationOutcome
+from claimprov import (TOOL_FIRST_POLICY, AcceptancePolicy, AgentKind, AgentRef, Claim, EpistemicStatus,
+                       RecordKind, RetrievalEvent, StatusPolicy, Verification, VerificationOutcome)
 from conftest import passed_by
 
 
@@ -82,11 +83,62 @@ def test_human_verification_satisfies_tool_verified(analyst, reviewer, dataset_e
 
 
 def test_retrieval_divergence(planner):
-    r = RetrievalEvent(claim_id="urn:c", retrieved_by=planner, enacted_status=EpistemicStatus.HUMAN_VERIFIED)
+    r = RetrievalEvent(claim_id="urn:c", retrieved_by=planner, observed_use=RecordKind.DECISION,
+                       required_status=EpistemicStatus.HUMAN_VERIFIED)
+    assert r.enacted_status is EpistemicStatus.HUMAN_VERIFIED
     assert r.divergence(EpistemicStatus.ASSERTED) == 2
     assert r.divergence(EpistemicStatus.HUMAN_VERIFIED) == 0
-    r2 = RetrievalEvent(claim_id="urn:c", retrieved_by=planner, enacted_status=EpistemicStatus.ASSERTED)
+    r2 = RetrievalEvent(claim_id="urn:c", retrieved_by=planner, observed_use=RecordKind.DECISION,
+                        required_status=EpistemicStatus.ASSERTED)
     assert r2.divergence(EpistemicStatus.TOOL_VERIFIED) == -1
+
+
+def test_retrieval_requires_policy_or_required(planner):
+    with pytest.raises(ValidationError, match="required_status or policy"):
+        RetrievalEvent(claim_id="urn:c", retrieved_by=planner, observed_use=RecordKind.DECISION)
+
+
+def test_required_status_taken_from_policy(planner):
+    pol = AcceptancePolicy(name="ops", required={
+        RecordKind.PREDICTION: EpistemicStatus.ASSERTED,
+        RecordKind.DECISION: EpistemicStatus.ASSERTED,
+        RecordKind.EVENT: EpistemicStatus.TOOL_VERIFIED,
+    })
+    r = RetrievalEvent(claim_id="urn:c", retrieved_by=planner, observed_use=RecordKind.EVENT, policy=pol)
+    assert r.required_status is EpistemicStatus.TOOL_VERIFIED
+
+
+def test_inflation_needs_gap_and_no_review(planner):
+    r = RetrievalEvent(claim_id="urn:c", retrieved_by=planner, observed_use=RecordKind.DECISION,
+                       required_status=EpistemicStatus.TOOL_VERIFIED)
+    assert r.is_inflation(EpistemicStatus.ASSERTED)
+    assert not r.is_inflation(EpistemicStatus.TOOL_VERIFIED)
+    reviewed = r.model_copy(update={"reviewed": True})
+    assert not reviewed.is_inflation(EpistemicStatus.ASSERTED)
+
+
+def test_permitted_provisional_use_is_not_inflation(planner):
+    """Policy allows a decision on provisional evidence: no inflation, whatever the decision."""
+    r = RetrievalEvent(claim_id="urn:c", retrieved_by=planner, observed_use=RecordKind.DECISION,
+                       required_status=EpistemicStatus.ASSERTED)
+    assert not r.is_inflation(EpistemicStatus.ASSERTED)
+
+
+def test_status_policy_invariants():
+    with pytest.raises(ValidationError, match="share a rank"):
+        StatusPolicy(ranks={EpistemicStatus.ASSERTED: 0, EpistemicStatus.DERIVED: 1,
+                            EpistemicStatus.TOOL_VERIFIED: 2, EpistemicStatus.HUMAN_VERIFIED: 3})
+    with pytest.raises(ValidationError, match="must rank above"):
+        StatusPolicy(ranks={EpistemicStatus.ASSERTED: 1, EpistemicStatus.DERIVED: 1,
+                            EpistemicStatus.TOOL_VERIFIED: 0, EpistemicStatus.HUMAN_VERIFIED: 2})
+    assert TOOL_FIRST_POLICY.rank(EpistemicStatus.TOOL_VERIFIED) > TOOL_FIRST_POLICY.rank(EpistemicStatus.HUMAN_VERIFIED)
+
+
+def test_divergence_respects_policy(planner):
+    r = RetrievalEvent(claim_id="urn:c", retrieved_by=planner, observed_use=RecordKind.DECISION,
+                       required_status=EpistemicStatus.HUMAN_VERIFIED)
+    assert r.divergence(EpistemicStatus.TOOL_VERIFIED) == 1
+    assert r.divergence(EpistemicStatus.TOOL_VERIFIED, policy=TOOL_FIRST_POLICY) == -1
 
 
 def test_agent_ref_is_hashable():

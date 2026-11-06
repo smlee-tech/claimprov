@@ -47,11 +47,42 @@ score as evidence, whether or not anything in the agent "believed" it.
 
 The two can diverge, and the divergence is what this library makes
 observable. claimprov therefore models retrieval as a first-class provenance
-event (`cp:Retrieval`) with its own `cp:enactedStatus`. The W3C PROV model
-records what happened to an entity; claimprov additionally records what the
-consumer *did with* the entity's qualification. The conditions under which
-declared and enacted status converge or diverge are the subject of the
-companion paper and are not restated here.
+event (`cp:Retrieval`). The W3C PROV model records what happened to an
+entity; claimprov additionally records what the consumer *did with* the
+entity's qualification.
+
+*Enacted status is derived, not annotated.* A naive behavioral definition
+("the consumer used it, so it enacted it as evidence") is too wide: every
+decision uses uncertain inputs, so every decision would count as inflation.
+claimprov records instead what kind of record the consumer produced
+(`cp:observedUse`: a prediction, a decision, or an event record) and what
+minimum status the consumer's acceptance policy required of its input for
+that kind of record (`cp:requiredStatus`). Enacted status is the standing the
+use presupposed, which is the required status. **Status inflation** is then a
+use that required more warrant than the claim declared, with no evaluative
+mediation in between. A provisional risk signal that triggers a review the
+policy permits on provisional evidence is not inflation; the same signal
+recorded as a confirmed fact is.
+
+The conditions under which declared and enacted status converge or diverge
+are the subject of the companion paper and are not restated here.
+
+## 2a. Three kinds of record
+
+One inference can produce three different kinds of record downstream, and
+they are justified differently:
+
+| record kind | justified by | example |
+|---|---|---|
+| prediction | factual warrant: evidence and verification | "Account A has high churn risk" |
+| decision | procedural legitimacy: the policy permitted it on the evidence available | "Escalate Account A for retention review" |
+| event record | the event having happened | "Retention review for Account A initiated on Nov 3" |
+
+The distinction matters for correction. If the prediction turns out wrong,
+the decision keeps its procedural legitimacy (the policy allowed it at the
+time), and the event record stays true (the review did happen). What a
+correction invalidates is the *warrant* that flowed from the prediction, not
+every record downstream of it. `cp:RecordKind` carries this on each claim.
 
 ## 3. Claims as the unit of governance
 
@@ -72,6 +103,12 @@ actually reason.
 | `derived` | 0 | at least one source claim via `prov:wasDerivedFrom` |
 | `tool-verified` | 1 | a passed `cp:Verification` by a `cp:Tool` (or a person) that cites evidence |
 | `human-verified` | 2 | a passed `cp:Verification` by a `prov:Person` that cites evidence |
+
+The ranking is a deployment policy (`StatusPolicy`), not a universal
+epistemic ordering. The default puts human verification above tool
+verification; a deployment in which a reproducible tool check is the stronger
+warrant can invert the two. The only invariant the library enforces is that
+`asserted` and `derived` share a rank below both verified statuses.
 
 Two design decisions carry weight.
 
@@ -106,6 +143,14 @@ declared/enacted gap. claimprov reports this as a *warning*, not a violation,
 because it is a measurement of the phenomenon rather than a defect in the
 record. The warning is the library's main output.
 
+**Asset inheritance.** Governance certifies assets; a claim written into a
+certified asset without matching status is read, by anything that reads the
+asset rather than the claim, at the asset's standing. `cp:Asset` and
+`cp:defaultStatus` make that visible as a warning on the claim. This is the
+third place a qualification can be lost: not at storage (the claim is
+well-formed), not at the consumer's policy (which may be correct), but in
+what the container confers on its contents.
+
 Keeping these apart matters. A claim store can be perfectly well-formed and
 still let every provisional inference be acted on as fact. Storage-time rules
 and retrieval-time measurement answer different questions.
@@ -114,8 +159,11 @@ and retrieval-time measurement answer different questions.
 
 claimprov is a reference implementation of a theoretical distinction. It
 shows that the distinction can be formalized precisely enough to validate, and
-it provides an instrument with which an agent chain can be observed. It is
-not:
+it provides an instrument with which an agent chain can be observed. A tool
+built from a definition will output that definition, so the scenarios in
+`examples/` show where the definitions discriminate and where they do not;
+they are illustrations and boundary cases, not evidence that the theory is
+right. It is not:
 
 - an empirical finding about any platform, vendor or organization;
 - a detection product, a safety layer or a guarantee that agents will behave;

@@ -8,16 +8,19 @@ from importlib import resources
 from typing import Iterable, Optional
 
 from pyshacl import validate as _shacl_validate
-from rdflib import RDF, RDFS, XSD, Graph, Literal, Namespace, URIRef
+from rdflib import RDF, RDFS, XSD, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import DCTERMS, PROV
 
 from .model import (
     CP_NS,
+    AcceptancePolicy,
     AgentKind,
     AgentRef,
+    Asset,
     Claim,
     Evidence,
     EvidenceKind,
+    RecordKind,
     RetrievalEvent,
     Verification,
     VerificationOutcome,
@@ -35,6 +38,11 @@ _OUTCOME = {
     VerificationOutcome.PASSED: CP.Passed,
     VerificationOutcome.FAILED: CP.Failed,
     VerificationOutcome.INCONCLUSIVE: CP.Inconclusive,
+}
+_RECORD_KIND = {
+    RecordKind.PREDICTION: CP.Prediction,
+    RecordKind.DECISION: CP.Decision,
+    RecordKind.EVENT: CP.EventRecord,
 }
 _EVIDENCE_KIND = {
     EvidenceKind.DATASET: CP.Dataset,
@@ -109,12 +117,38 @@ class ClaimGraph:
         self.g.add((claim_node, CP.verifiedBy, node))
         return node
 
+    def add_asset(self, a: Asset) -> URIRef:
+        node = URIRef(a.id)
+        self.g.add((node, RDF.type, CP.Asset))
+        self.g.add((node, RDF.type, PROV.Entity))
+        self.g.add((node, RDFS.label, Literal(a.name)))
+        self.g.add((node, CP.defaultStatus, URIRef(a.default_status.iri)))
+        if a.certified_by:
+            self.g.add((node, PROV.wasAttributedTo, self.add_agent(a.certified_by)))
+        return node
+
+    def add_policy(self, p: AcceptancePolicy) -> URIRef:
+        node = URIRef(p.id)
+        self.g.add((node, RDF.type, CP.AcceptancePolicy))
+        self.g.add((node, RDF.type, PROV.Plan))
+        self.g.add((node, RDFS.label, Literal(p.name)))
+        self.g.add((node, CP.readsStatus, Literal(p.reads_status)))
+        for kind, st in p.required.items():
+            req = BNode()
+            self.g.add((node, CP.requires, req))
+            self.g.add((req, CP.forRecordKind, _RECORD_KIND[kind]))
+            self.g.add((req, CP.minimumStatus, URIRef(st.iri)))
+        return node
+
     def add_claim(self, c: Claim) -> URIRef:
         node = URIRef(c.id)
         self.g.add((node, RDF.type, CP.Claim))
         self.g.add((node, RDF.type, PROV.Entity))
         self.g.add((node, CP.statement, Literal(c.statement)))
+        self.g.add((node, CP.recordKind, _RECORD_KIND[c.record_kind]))
         self.g.add((node, CP.declaredStatus, URIRef(c.declared_status.iri)))
+        if c.stored_in:
+            self.g.add((node, CP.storedIn, URIRef(c.stored_in)))
         self.g.add((node, PROV.wasAttributedTo, self.add_agent(c.asserted_by)))
         self.g.add((node, PROV.generatedAtTime, Literal(c.asserted_at)))
         if c.generated_by:
@@ -146,7 +180,14 @@ class ClaimGraph:
         self.g.add((node, PROV.used, URIRef(r.claim_id)))
         self.g.add((node, PROV.wasAssociatedWith, self.add_agent(r.retrieved_by)))
         self.g.add((node, PROV.startedAtTime, Literal(r.retrieved_at)))
+        self.g.add((node, CP.observedUse, _RECORD_KIND[r.observed_use]))
+        self.g.add((node, CP.requiredStatus, URIRef(r.enacted_status.iri)))
         self.g.add((node, CP.enactedStatus, URIRef(r.enacted_status.iri)))
+        self.g.add((node, CP.reviewed, Literal(r.reviewed)))
+        if r.produced:
+            self.g.add((node, PROV.generated, URIRef(r.produced)))
+        if r.policy:
+            self.g.add((node, PROV.hadPlan, self.add_policy(r.policy)))
         if r.query:
             self.g.add((node, CP.retrievalQuery, Literal(r.query)))
         if r.used_in:
@@ -155,12 +196,14 @@ class ClaimGraph:
             self.g.add((node, CP.rationale, Literal(r.rationale)))
         return node
 
-    def add_all(self, items: Iterable[Claim | RetrievalEvent]) -> None:
+    def add_all(self, items: Iterable[Claim | RetrievalEvent | Asset]) -> None:
         for item in items:
             if isinstance(item, Claim):
                 self.add_claim(item)
             elif isinstance(item, RetrievalEvent):
                 self.add_retrieval(item)
+            elif isinstance(item, Asset):
+                self.add_asset(item)
             else:
                 raise TypeError(type(item))
 

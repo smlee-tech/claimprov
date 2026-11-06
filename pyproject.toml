@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "claimprov"
-version = "0.1.0a1"
+version = "0.1.0a2"
 description = "Claim-level provenance and epistemic status tracking for multi-agent systems (PROV-O + SHACL)"
 readme = "README.md"
 license = { text = "Apache-2.0" }

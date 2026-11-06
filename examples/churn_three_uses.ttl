@@ -1,0 +1,131 @@
+@prefix cp: <https://w3id.org/claimprov#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<urn:claimprov:retrieval:B1> a prov:Activity,
+        cp:Retrieval ;
+    prov:generated <urn:claimprov:claim:churn-confirmed> ;
+    prov:hadPlan <urn:claimprov:policy:strict-records> ;
+    prov:startedAtTime "2026-11-05T01:30:00.894921+00:00"^^xsd:dateTime ;
+    prov:used <urn:claimprov:claim:churn-A> ;
+    prov:wasAssociatedWith <urn:claimprov:agent:crm-writer> ;
+    cp:enactedStatus cp:ToolVerified ;
+    cp:observedUse cp:EventRecord ;
+    cp:rationale "wrote the risk flag into the account record as a confirmed status" ;
+    cp:requiredStatus cp:ToolVerified ;
+    cp:reviewed false .
+
+<urn:claimprov:retrieval:B2> a prov:Activity,
+        cp:Retrieval ;
+    prov:generated <urn:claimprov:claim:escalate-A> ;
+    prov:hadPlan <urn:claimprov:policy:retention> ;
+    prov:startedAtTime "2026-11-05T01:30:00.895406+00:00"^^xsd:dateTime ;
+    prov:used <urn:claimprov:claim:churn-A> ;
+    prov:wasAssociatedWith <urn:claimprov:agent:ops> ;
+    cp:enactedStatus cp:Asserted ;
+    cp:observedUse cp:Decision ;
+    cp:rationale "retention policy permits review on a provisional risk signal" ;
+    cp:requiredStatus cp:Asserted ;
+    cp:reviewed false .
+
+<urn:claimprov:retrieval:C> a prov:Activity,
+        cp:Retrieval ;
+    prov:generated <urn:claimprov:claim:review-initiated> ;
+    prov:hadPlan <urn:claimprov:policy:retention> ;
+    prov:startedAtTime "2026-11-05T01:30:00.895801+00:00"^^xsd:dateTime ;
+    prov:used <urn:claimprov:claim:escalate-A> ;
+    prov:wasAssociatedWith <urn:claimprov:agent:scheduler> ;
+    cp:enactedStatus cp:Asserted ;
+    cp:observedUse cp:EventRecord ;
+    cp:rationale "the review was scheduled; the record describes an event the scheduler performed" ;
+    cp:requiredStatus cp:Asserted ;
+    cp:reviewed false .
+
+<urn:claimprov:agent:sales-intel> a prov:Agent,
+        cp:LLMAgent ;
+    rdfs:label "sales-intelligence-agent" .
+
+<urn:claimprov:claim:churn-confirmed> a prov:Entity,
+        cp:Claim ;
+    prov:generatedAtTime "2026-11-05T01:30:00.894756+00:00"^^xsd:dateTime ;
+    prov:wasAttributedTo <urn:claimprov:agent:crm-writer> ;
+    prov:wasDerivedFrom <urn:claimprov:claim:churn-A> ;
+    cp:declaredStatus cp:Derived ;
+    cp:recordKind cp:EventRecord ;
+    cp:statement "Account A churn is confirmed" ;
+    cp:storedIn <urn:claimprov:asset:crm-accounts> .
+
+<urn:claimprov:claim:review-initiated> a prov:Entity,
+        cp:Claim ;
+    prov:generatedAtTime "2026-11-05T01:30:00.895704+00:00"^^xsd:dateTime ;
+    prov:wasAttributedTo <urn:claimprov:agent:scheduler> ;
+    prov:wasDerivedFrom <urn:claimprov:claim:escalate-A> ;
+    cp:declaredStatus cp:Derived ;
+    cp:recordKind cp:EventRecord ;
+    cp:statement "Retention review for Account A initiated on 2026-11-03" .
+
+<urn:claimprov:policy:strict-records> a prov:Plan,
+        cp:AcceptancePolicy ;
+    rdfs:label "records policy: confirmed facts need verification" ;
+    cp:readsStatus true ;
+    cp:requires [ cp:forRecordKind cp:Decision ;
+            cp:minimumStatus cp:Asserted ],
+        [ cp:forRecordKind cp:Prediction ;
+            cp:minimumStatus cp:Asserted ],
+        [ cp:forRecordKind cp:EventRecord ;
+            cp:minimumStatus cp:ToolVerified ] .
+
+<urn:claimprov:agent:crm-writer> a prov:Agent,
+        cp:LLMAgent ;
+    rdfs:label "crm-writer-agent" .
+
+<urn:claimprov:agent:ops> a prov:Agent,
+        cp:LLMAgent ;
+    rdfs:label "retention-ops-agent" .
+
+<urn:claimprov:agent:scheduler> a prov:Agent,
+        cp:Tool ;
+    rdfs:label "review-scheduler" .
+
+<urn:claimprov:asset:crm-accounts> a prov:Entity,
+        cp:Asset ;
+    rdfs:label "CRM.accounts (certified)" ;
+    cp:defaultStatus cp:HumanVerified .
+
+<urn:claimprov:policy:retention> a prov:Plan,
+        cp:AcceptancePolicy ;
+    rdfs:label "retention policy: provisional risk signals may trigger review" ;
+    cp:readsStatus true ;
+    cp:requires [ cp:forRecordKind cp:Decision ;
+            cp:minimumStatus cp:Asserted ],
+        [ cp:forRecordKind cp:Prediction ;
+            cp:minimumStatus cp:Asserted ],
+        [ cp:forRecordKind cp:EventRecord ;
+            cp:minimumStatus cp:Asserted ],
+        [ cp:forRecordKind cp:Prediction ;
+            cp:minimumStatus cp:Asserted ],
+        [ cp:forRecordKind cp:EventRecord ;
+            cp:minimumStatus cp:Asserted ],
+        [ cp:forRecordKind cp:Decision ;
+            cp:minimumStatus cp:Asserted ] .
+
+<urn:claimprov:claim:escalate-A> a prov:Entity,
+        cp:Claim ;
+    prov:generatedAtTime "2026-11-05T01:30:00.895308+00:00"^^xsd:dateTime ;
+    prov:wasAttributedTo <urn:claimprov:agent:ops> ;
+    prov:wasDerivedFrom <urn:claimprov:claim:churn-A> ;
+    cp:declaredStatus cp:Derived ;
+    cp:recordKind cp:Decision ;
+    cp:statement "Escalate Account A for retention review" .
+
+<urn:claimprov:claim:churn-A> a prov:Entity,
+        cp:Claim ;
+    prov:generatedAtTime "2026-11-05T01:30:00.894527+00:00"^^xsd:dateTime ;
+    prov:wasAttributedTo <urn:claimprov:agent:sales-intel> ;
+    cp:confidence 0.62 ;
+    cp:declaredStatus cp:Asserted ;
+    cp:recordKind cp:Prediction ;
+    cp:statement "Account A has high churn risk" ;
+    cp:storedIn <urn:claimprov:asset:crm-accounts> .
+
